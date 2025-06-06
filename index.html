@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Chat for Watch</title>
+    <title>DeepSeek Chat</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     
-    <!-- 配置Tailwind为小屏幕优化 -->
+    <!-- 配置Tailwind -->
     <script>
         tailwind.config = {
             theme: {
@@ -17,10 +17,17 @@
                     colors: {
                         primary: '#165DFF',
                         secondary: '#36D399',
+                        dark: '#0F172A',
+                        darker: '#0A0F1C',
+                        light: '#E2E8F0',
+                        error: '#EF4444',
                     },
                     fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif'],
                     },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
                 }
             }
         }
@@ -32,57 +39,105 @@
                 content-visibility: auto;
             }
             .watch-height {
-                height: clamp(270px, 75vh, 330px); /* Watch屏幕高度范围 */
+                height: clamp(270px, 75vh, 330px);
             }
-            .watch-input {
-                @apply w-full px-3 py-2 rounded-lg bg-gray-800 text-white text-sm border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            .message-bubble {
+                @apply rounded-lg p-3 max-w-[85%] break-words transition-all duration-300;
             }
-            .watch-button {
-                @apply px-4 py-2 bg-primary text-white rounded-lg font-medium transition-all duration-200 hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+            .user-bubble {
+                @apply bg-primary/20 rounded-tr-none text-white;
+            }
+            .ai-bubble {
+                @apply bg-gray-700/50 rounded-tl-none text-light;
+            }
+            .system-bubble {
+                @apply bg-gray-600/30 rounded-lg text-gray-300 text-sm;
+            }
+            .error-bubble {
+                @apply bg-red-900/30 rounded-lg text-red-300;
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
             }
         }
     </style>
-</head>
-<body class="bg-gray-900 text-white min-h-screen font-sans">
-    <div class="container mx-auto px-2 py-4 max-w-sm watch-height flex flex-col">
-        <!-- 标题 -->
-        <header class="mb-4 text-center">
-            <h1 class="text-xl font-bold text-primary">DeepSeek Chat</h1>
-        </header>
+    
+    <!-- 自定义样式 -->
+    <style>
+        body {
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            background-attachment: fixed;
+        }
         
+        .chat-container {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(22, 93, 255, 0.3) transparent;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: rgba(22, 93, 255, 0.3);
+            border-radius: 20px;
+        }
+        
+        .loading-dot {
+            animation: loading 1.4s infinite ease-in-out both;
+        }
+        
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes loading {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="font-inter text-light min-h-screen flex items-center justify-center p-2">
+    <div class="w-full max-w-sm bg-dark/80 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-primary/10">
         <!-- 聊天区域 -->
-        <div id="chat-container" class="flex-1 overflow-y-auto mb-4 bg-gray-800/50 rounded-lg p-3 space-y-3">
+        <div id="chat-container" class="h-[calc(100vh-120px)] max-h-[400px] overflow-y-auto p-4 space-y-4 chat-container">
             <div class="flex items-start">
-                <div class="bg-primary/20 p-2 rounded-lg">
+                <div class="bg-primary/20 p-2 rounded-full mr-2 flex-shrink-0">
                     <i class="fa fa-robot text-primary"></i>
                 </div>
-                <div class="ml-2 bg-gray-700/50 p-3 rounded-lg rounded-tl-none">
-                    <p>你好！我是DeepSeek AI，有什么可以帮助你的？</p>
+                <div class="message-bubble ai-bubble">
+                    <p class="text-base">你好！我是DeepSeek AI，有什么可以帮助你的？</p>
                 </div>
             </div>
         </div>
         
         <!-- 输入区域 -->
-        <div class="flex space-x-2">
-            <input 
-                type="text" 
-                id="user-input" 
-                placeholder="输入问题..." 
-                class="watch-input flex-1"
-                maxlength="200" <!-- Watch输入限制 -->
-            >
-            <button 
-                id="send-btn" 
-                class="watch-button flex items-center justify-center min-w-[40px]"
-            >
-                <i class="fa fa-paper-plane"></i>
-            </button>
+        <div class="p-3 border-t border-gray-800">
+            <div class="flex items-center space-x-2">
+                <input 
+                    type="text" 
+                    id="user-input" 
+                    placeholder="输入问题..." 
+                    class="flex-1 bg-darker text-base px-4 py-3 rounded-xl border border-gray-700 input-focus"
+                    maxlength="200"
+                    autocomplete="off"
+                >
+                <button 
+                    id="send-btn" 
+                    class="bg-primary hover:bg-primary/90 active:scale-95 transition-all duration-200 text-white p-3 rounded-xl flex items-center justify-center"
+                >
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // DeepSeek API配置
-        const API_KEY = "sk-4b0013d32f704409b1d467fe51a67788";
+        // 隐藏的API密钥（注意：Base64不是安全措施，仅用于隐藏）
+        const API_KEY = atob("c2stNGIwMDEzZDMyZjcwNDQwOWIxZDQ2N2ZlNTFhNjc3ODg=");
         const API_URL = "https://api.deepseek.com/v1/chat/completions";
         
         const chatContainer = document.getElementById("chat-container");
@@ -116,7 +171,7 @@
                             {role: "user", content: message}
                         ],
                         temperature: 0.7,
-                        max_tokens: 300
+                        max_tokens: 500
                     })
                 });
                 
@@ -141,21 +196,22 @@
         function addMessage(role, content) {
             const messageClass = role === "user" ? "flex justify-end" : "flex items-start";
             const iconClass = role === "user" ? "fa-user" : "fa-robot";
-            const bgClass = role === "user" ? "bg-primary/20" : "bg-gray-700/50";
+            const bubbleClass = role === "user" ? "user-bubble" : "ai-bubble";
             const iconColor = role === "user" ? "text-gray-300" : "text-primary";
+            const iconBg = role === "user" ? "bg-gray-700/50" : "bg-primary/20";
             
             const messageHTML = `
-                <div class="${messageClass}">
+                <div class="${messageClass} items-start opacity-0 transform translate-y-2 transition-all duration-300" style="animation: fadeIn 0.3s forwards ${role === 'user' ? '0.1s' : '0.2s'}">
                     ${role === "ai" ? `
-                        <div class="bg-primary/20 p-2 rounded-lg">
+                        <div class="${iconBg} p-2 rounded-full mr-2 flex-shrink-0">
                             <i class="fa ${iconClass} ${iconColor}"></i>
                         </div>
                     ` : ''}
-                    <div class="ml-2 ${bgClass} p-3 rounded-lg ${role === "user" ? 'rounded-tr-none' : 'rounded-tl-none'}">
-                        <p>${escapeHTML(content)}</p>
+                    <div class="message-bubble ${bubbleClass}">
+                        <p class="text-base">${escapeHTML(content)}</p>
                     </div>
                     ${role === "user" ? `
-                        <div class="bg-gray-700/50 p-2 rounded-lg ml-1">
+                        <div class="bg-gray-700/50 p-2 rounded-full ml-2 flex-shrink-0">
                             <i class="fa ${iconClass} ${iconColor}"></i>
                         </div>
                     ` : ''}
@@ -164,18 +220,30 @@
             
             chatContainer.insertAdjacentHTML("beforeend", messageHTML);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 触发动画
+            setTimeout(() => {
+                const messageElements = chatContainer.querySelectorAll('.opacity-0');
+                messageElements.forEach(el => {
+                    el.classList.remove('opacity-0', 'translate-y-2');
+                });
+            }, 10);
         }
         
         // 添加加载状态
         function addLoading() {
             const id = Date.now();
             const loadingHTML = `
-                <div id="loading-${id}" class="flex items-start">
-                    <div class="bg-primary/20 p-2 rounded-lg">
+                <div id="loading-${id}" class="flex items-start opacity-0 transform translate-y-2 transition-all duration-300" style="animation: fadeIn 0.3s forwards">
+                    <div class="bg-primary/20 p-2 rounded-full mr-2 flex-shrink-0">
                         <i class="fa fa-robot text-primary"></i>
                     </div>
-                    <div class="ml-2 bg-gray-700/50 p-3 rounded-lg rounded-tl-none">
-                        <p class="text-gray-400"><i class="fa fa-circle-o-notch fa-spin mr-2"></i>思考中...</p>
+                    <div class="message-bubble ai-bubble">
+                        <div class="flex space-x-1">
+                            <span class="loading-dot w-2 h-2 bg-primary rounded-full"></span>
+                            <span class="loading-dot w-2 h-2 bg-primary rounded-full"></span>
+                            <span class="loading-dot w-2 h-2 bg-primary rounded-full"></span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -190,16 +258,16 @@
             const loadingElement = document.getElementById(`loading-${id}`);
             if (!loadingElement) return;
             
-            const bgClass = type === "error" ? "bg-red-900/30" : "bg-gray-700/50";
-            const textClass = type === "error" ? "text-red-300" : "text-white";
+            const bubbleClass = type === "error" ? "error-bubble" : "ai-bubble";
+            const textClass = type === "error" ? "text-red-300" : "text-light";
             
             loadingElement.innerHTML = `
                 <div class="flex items-start">
-                    <div class="bg-primary/20 p-2 rounded-lg">
+                    <div class="bg-primary/20 p-2 rounded-full mr-2 flex-shrink-0">
                         <i class="fa fa-robot text-primary"></i>
                     </div>
-                    <div class="ml-2 ${bgClass} p-3 rounded-lg rounded-tl-none">
-                        <p class="${textClass}">${escapeHTML(content)}</p>
+                    <div class="message-bubble ${bubbleClass}">
+                        <p class="text-base ${textClass}">${escapeHTML(content)}</p>
                     </div>
                 </div>
             `;
@@ -213,8 +281,12 @@
             sendBtn.disabled = disable;
             if (disable) {
                 sendBtn.classList.add("opacity-50");
+                sendBtn.classList.remove("bg-primary");
+                sendBtn.classList.add("bg-gray-600");
             } else {
                 sendBtn.classList.remove("opacity-50");
+                sendBtn.classList.remove("bg-gray-600");
+                sendBtn.classList.add("bg-primary");
             }
         }
         
@@ -239,6 +311,12 @@
         
         // 自动聚焦输入框
         userInput.focus();
+        
+        // 淡入动画
+        const fadeIn = keyframes`
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        `;
     </script>
 </body>
 </html>
